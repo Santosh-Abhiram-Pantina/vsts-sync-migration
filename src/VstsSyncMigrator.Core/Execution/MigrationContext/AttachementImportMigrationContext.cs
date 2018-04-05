@@ -33,54 +33,78 @@ namespace VstsSyncMigrator.Engine
 
             Trace.WriteLine(string.Format("Found target project as {0}", destProject.Name));
 
-            List<string> files = System.IO.Directory.EnumerateFiles(exportPath).ToList<string>();
+            // Read files from sub-directories as well.
+            List<string> files = System.IO.Directory.EnumerateFiles(exportPath,string.Empty,SearchOption.AllDirectories).ToList<string>();
             WorkItem targetWI = null;
             int current = files.Count;
             int failures = 0;
             int skipped = 0;
             foreach (string file in files)
             {
-                string fileName = System.IO.Path.GetFileName(file);
-                try
+                // We will re-try for a max of 10 attempts before erroring out.
+                const int maxRetryCount = 10;
+                var reTryCount = 0;
+                while (reTryCount < maxRetryCount)
                 {
-                    var fileNameParts = fileName.Split('#');
-                    if (fileNameParts.Length != 2)
-                        continue;
-
-                    string reflectedID = fileNameParts[0].Replace('+', ':').Replace("--", "/");
-                    string targetFileName = fileNameParts[1];
-                    var renamedFilePath = Path.Combine(Path.GetDirectoryName(file), targetFileName);
-                    File.Move(file, renamedFilePath);
-                    targetWI = targetStore.FindReflectedWorkItemByReflectedWorkItemId(reflectedID, me.ReflectedWorkItemIdFieldName);
-                    if (targetWI != null)
+                    reTryCount++;
+                    try
                     {
-                        Trace.WriteLine(string.Format("{0} of {1} - Import {2} to {3}", current, files.Count, fileName, targetWI.Id));
-                        var attachments = targetWI.Attachments.Cast<Attachment>();
-                        var attachment = attachments.Where(a => a.Name == targetFileName).FirstOrDefault();
-                        if (attachment == null)
+                        // Get the file name to check in TFS/VSTS for existing attachments.
+                        var targetFileName = System.IO.Path.GetFileName(file);
+                        
+                        // Get Folder Name from the file name and base folder path.
+                        // We are doing this because we have work item level folders.
+                        var completeDirectory = Path.GetDirectoryName(file);
+                        var directory = completeDirectory.Replace(exportPath, string.Empty).Remove('\\').Trim();
+
+                        // Get the Reflector Id from the directory.
+                        var reflectedId = directory.Replace('+', ':').Replace("--", "/");
+
+                        targetWI = targetStore.FindReflectedWorkItemByReflectedWorkItemId(reflectedId,
+                            me.ReflectedWorkItemIdFieldName);
+                        if (targetWI != null)
                         {
-                            Attachment a = new Attachment(renamedFilePath);
-                            targetWI.Attachments.Add(a);
-                            targetWI.Save();
+                            Trace.WriteLine(string.Format("{0} of {1} - Import {2} to {3}", current, files.Count,
+                                targetFileName, targetWI.Id));
+                            var attachments = targetWI.Attachments.Cast<Attachment>();
+                            var attachment = attachments.Where(a => a.Name == targetFileName).FirstOrDefault();
+                            if (attachment == null)
+                            {
+                                Attachment a = new Attachment(file);
+                                targetWI.Attachments.Add(a);
+                                targetWI.Save();
+                            }
+                            else
+                            {
+                                Trace.WriteLine(string.Format(" [SKIP] WorkItem {0} already contains attachment {1}",
+                                    targetWI.Id, targetFileName));
+                                skipped++;
+                            }
                         }
                         else
                         {
-                            Trace.WriteLine(string.Format(" [SKIP] WorkItem {0} already contains attachment {1}", targetWI.Id, fileName));
+                            Trace.WriteLine(string.Format("{0} of {1} - Skipping {2} to {3}", current, files.Count,
+                                targetFileName, 0));
                             skipped++;
                         }
+
+                        System.IO.File.Delete(file);
+                        break;
                     }
-                    else
+                    catch (FileAttachmentException ex)
                     {
-                        Trace.WriteLine(string.Format("{0} of {1} - Skipping {2} to {3}", current, files.Count, fileName, 0));
-                        skipped++;
+                        // Probably due to attachment being over size limit
+                        Trace.WriteLine($" Attempt {reTryCount} of {maxRetryCount} :{ex.Message}");
+                        failures++;
                     }
-                    System.IO.File.Delete(renamedFilePath);
-                } catch (FileAttachmentException ex)
-                {
-                    // Probably due to attachment being over size limit
-                    Trace.WriteLine(ex.Message) ;
-                    failures++;
+                    catch (Exception ex)
+                    {
+                        // Any other exception.
+                        Trace.WriteLine($" Attempt {reTryCount} of {maxRetryCount} :{ex.Message}");
+                        failures++;
+                    }
                 }
+
                 current--;
             }
             //////////////////////////////////////////////////
