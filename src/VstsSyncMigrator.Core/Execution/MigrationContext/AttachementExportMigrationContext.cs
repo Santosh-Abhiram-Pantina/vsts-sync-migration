@@ -50,25 +50,34 @@ namespace VstsSyncMigrator.Engine
                 foreach (Attachment wia in wi.Attachments)
                 {
                     string reflectedId = sourceStore.CreateReflectedWorkItemId(wi);
-                    string fname = string.Format("{0}#{1}", reflectedId.Replace("/", "--").Replace(":", "+"), wia.Name);
+
+                    // We will create a folder for the work item and place all attachments there.
+                    var workitemFolder = reflectedId.Replace("/", "--").Replace(":", "+");
+                    Directory.CreateDirectory(Path.Combine(exportPath, workitemFolder));
+                    var fpath = Path.Combine(exportPath, workitemFolder, wia.Name);
                     Trace.Write("-");
-                    Trace.Write(fname);
-                    string fpath = Path.Combine(exportPath, fname);
+                    Trace.Write(fpath);
                     if (!File.Exists(fpath))
                     {
                         Trace.Write("...downloading");
-                        try
+                        const int maxRetryCount = 10;
+                        var reTryCount = 0;
+                        while (reTryCount < maxRetryCount)
                         {
-                            var fileLocation = workItemServer.DownloadFile(wia.Id);
-                            File.Copy(fileLocation, fpath, true);
-                            Trace.Write("...done");
+                            reTryCount++;
+                            try
+                            {
+                                var fileLocation = workItemServer.DownloadFile(wia.Id);
+                                File.Copy(fileLocation, fpath, true);
+                                Trace.Write("...done");
+                                break;
+                            }
+                            catch (Exception ex)
+                            {
+                                Telemetry.Current.TrackException(ex);
+                                Trace.Write($"\r\n Attempt {reTryCount} of {maxRetryCount} : Exception downloading attachements {ex.Message}");
+                            }
                         }
-                        catch (Exception ex)
-                        {
-                            Telemetry.Current.TrackException(ex);
-                            Trace.Write($"\r\nException downloading attachements {ex.Message}");
-                        }
-                     
                     }
                     else
                     {
