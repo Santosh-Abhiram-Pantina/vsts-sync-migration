@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Threading;
 using VstsSyncMigrator.Engine.Configuration.Processing;
 
 namespace VstsSyncMigrator.Engine
@@ -44,6 +45,7 @@ namespace VstsSyncMigrator.Engine
                 // We will re-try for a max of 10 attempts before erroring out.
                 const int maxRetryCount = 10;
                 var reTryCount = 0;
+                var isSuccess = false;
                 while (reTryCount < maxRetryCount)
                 {
                     reTryCount++;
@@ -55,7 +57,7 @@ namespace VstsSyncMigrator.Engine
                         // Get Folder Name from the file name and base folder path.
                         // We are doing this because we have work item level folders.
                         var completeDirectory = Path.GetDirectoryName(file);
-                        var directory = completeDirectory.Replace(exportPath, string.Empty).Remove('\\').Trim();
+                        var directory = completeDirectory.Replace(exportPath, string.Empty).Replace(@"\", string.Empty).Trim();
 
                         // Get the Reflector Id from the directory.
                         var reflectedId = directory.Replace('+', ':').Replace("--", "/");
@@ -88,23 +90,28 @@ namespace VstsSyncMigrator.Engine
                             skipped++;
                         }
 
-                        System.IO.File.Delete(file);
+                        try
+                        {
+                            System.IO.File.Delete(file);
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.WriteLine($"Deleting the file {file} failed. Delete the file manually. {ex.Message}");
+                        }
+                        isSuccess = true;
                         break;
-                    }
-                    catch (FileAttachmentException ex)
-                    {
-                        // Probably due to attachment being over size limit
-                        Trace.WriteLine($" Attempt {reTryCount} of {maxRetryCount} :{ex.Message}");
-                        failures++;
                     }
                     catch (Exception ex)
                     {
                         // Any other exception.
-                        Trace.WriteLine($" Attempt {reTryCount} of {maxRetryCount} :{ex.Message}");
+                        Trace.WriteLine($" Attempt {reTryCount} of {maxRetryCount} :{ex.Message}. Going to sleep for 5 seconds to recover. ");
                         failures++;
+                        Thread.Sleep(5000);
                     }
                 }
 
+                if (!isSuccess)
+                    break;
                 current--;
             }
             //////////////////////////////////////////////////
