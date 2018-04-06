@@ -34,7 +34,7 @@ namespace VstsSyncMigrator.Engine
             Trace.WriteLine(string.Format("Found target project as {0}", destProject.Name));
 
             // Read files from sub-directories as well.
-            List<string> files = System.IO.Directory.EnumerateFiles(exportPath,string.Empty,SearchOption.AllDirectories).ToList<string>();
+            List<string> files = System.IO.Directory.EnumerateFiles(exportPath, "*",SearchOption.AllDirectories).ToList<string>();
             WorkItem targetWI = null;
             int current = files.Count;
             int failures = 0;
