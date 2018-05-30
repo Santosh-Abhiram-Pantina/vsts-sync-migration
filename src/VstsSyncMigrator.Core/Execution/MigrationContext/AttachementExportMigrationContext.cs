@@ -38,7 +38,7 @@ namespace VstsSyncMigrator.Engine
             WorkItemStoreContext sourceStore = new WorkItemStoreContext(me.Source, WorkItemStoreFlags.None);
             TfsQueryContext tfsqc = new TfsQueryContext(sourceStore);
             tfsqc.AddParameter("TeamProject", me.Source.Name);
-            tfsqc.Query = string.Format(@"SELECT [System.Id], [System.Tags] FROM WorkItems WHERE [System.TeamProject] = @TeamProject {0} ORDER BY [System.ChangedDate] desc", _config.QueryBit);
+            tfsqc.Query = string.Format(@"SELECT [System.Id], [System.Tags] FROM WorkItems WHERE [System.TeamProject] = @TeamProject {0} ORDER BY [System.Id] ", _config.QueryBit);
             WorkItemCollection sourceWIS = tfsqc.Execute();
 
             int current = sourceWIS.Count;
@@ -50,11 +50,14 @@ namespace VstsSyncMigrator.Engine
                 foreach (Attachment wia in wi.Attachments)
                 {
                     string reflectedId = sourceStore.CreateReflectedWorkItemId(wi);
+                    var attachmentUploadedDate = $"{wia.AttachedTime}";
+                    var attachmentUploaded = attachmentUploadedDate.Replace("/", "--").Replace(":", "+");
 
                     // We will create a folder for the work item and place all attachments there.
                     var workitemFolder = reflectedId.Replace("/", "--").Replace(":", "+");
                     Directory.CreateDirectory(Path.Combine(exportPath, workitemFolder));
-                    var fpath = Path.Combine(exportPath, workitemFolder, wia.Name);
+                    var fpath = Path.Combine(exportPath, workitemFolder, $"{attachmentUploaded}@{wia.Name}");
+
                     Trace.Write("-");
                     Trace.Write(fpath);
                     if (!File.Exists(fpath))

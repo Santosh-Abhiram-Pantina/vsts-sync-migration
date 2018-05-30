@@ -38,7 +38,7 @@ namespace VstsSyncMigrator.Engine
             WorkItemStoreContext sourceStore = new WorkItemStoreContext(me.Source, WorkItemStoreFlags.BypassRules);
             TfsQueryContext tfsqc = new TfsQueryContext(sourceStore);
             tfsqc.AddParameter("TeamProject", me.Source.Name);
-            tfsqc.Query = string.Format(@"SELECT [System.Id] FROM WorkItems WHERE  [System.TeamProject] = @TeamProject {0} ORDER BY [System.ChangedDate] desc ", config.QueryBit); // AND  [Microsoft.VSTS.Common.ClosedDate] = ''
+            tfsqc.Query = string.Format(@"SELECT [System.Id] FROM WorkItems WHERE  [System.TeamProject] = @TeamProject {0} ORDER BY [System.Id]  ", config.QueryBit); // AND  [Microsoft.VSTS.Common.ClosedDate] = ''
             WorkItemCollection sourceWIS = tfsqc.Execute();
             //////////////////////////////////////////////////
 

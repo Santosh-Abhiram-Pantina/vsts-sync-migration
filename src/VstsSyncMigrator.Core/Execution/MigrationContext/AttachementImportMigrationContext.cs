@@ -52,27 +52,43 @@ namespace VstsSyncMigrator.Engine
                     try
                     {
                         // Get the file name to check in TFS/VSTS for existing attachments.
-                        var targetFileName = System.IO.Path.GetFileName(file);
-                        
+                        var fileName = System.IO.Path.GetFileName(file);
+                        var splitFileName = fileName.Split('@');
+                        var targetFileName = splitFileName.Length > 1 ? splitFileName[1] : splitFileName[0];
+                        var comment = splitFileName.Length > 1 ? $"Uploaded Date : {splitFileName[0].Replace('+', ':').Replace("--", "/")}" : $"";
+
                         // Get Folder Name from the file name and base folder path.
                         // We are doing this because we have work item level folders.
                         var completeDirectory = Path.GetDirectoryName(file);
                         var directory = completeDirectory.Replace(exportPath, string.Empty).Replace(@"\", string.Empty).Trim();
 
+                        var renamedFilePath = Path.Combine(completeDirectory, targetFileName);
+                        try
+                        {
+                            if (!File.Exists(renamedFilePath))
+                                File.Move(file, renamedFilePath);
+                            else
+                                renamedFilePath = file;
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.WriteLine($"Renaming the file {file} failed. Going with same file name. {ex.Message}");
+                            renamedFilePath = file;
+                        }
+                        
                         // Get the Reflector Id from the directory.
                         var reflectedId = directory.Replace('+', ':').Replace("--", "/");
 
-                        targetWI = targetStore.FindReflectedWorkItemByReflectedWorkItemId(reflectedId,
-                            me.ReflectedWorkItemIdFieldName);
+                        targetWI = targetStore.FindReflectedWorkItemByReflectedWorkItemId(reflectedId, me.ReflectedWorkItemIdFieldName);
                         if (targetWI != null)
                         {
-                            Trace.WriteLine(string.Format("{0} of {1} - Import {2} to {3}", current, files.Count,
-                                targetFileName, targetWI.Id));
+                            Trace.WriteLine(string.Format("{0} of {1} - Import {2} to {3}", current, files.Count, targetFileName, targetWI.Id));
                             var attachments = targetWI.Attachments.Cast<Attachment>();
                             var attachment = attachments.Where(a => a.Name == targetFileName).FirstOrDefault();
                             if (attachment == null)
                             {
-                                Attachment a = new Attachment(file);
+                                Attachment a = new Attachment(renamedFilePath);
+                                a.Comment = comment;
                                 targetWI.Attachments.Add(a);
                                 targetWI.Save();
                             }
@@ -92,7 +108,7 @@ namespace VstsSyncMigrator.Engine
 
                         try
                         {
-                            System.IO.File.Delete(file);
+                            System.IO.File.Delete(renamedFilePath);
                         }
                         catch (Exception ex)
                         {
