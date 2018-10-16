@@ -21,12 +21,12 @@ namespace VstsSyncMigrator.Engine
             : base(me, config)
         {
             _config = config;
-            PopulateIgnoreList();
+            PopulateIgnoreList(me.IgnoreFields);
         }
 
-        private void PopulateIgnoreList()
+        private void PopulateIgnoreList(List<string> ignoreFields = null)
         {
-            _ignore = new List<string>
+            _ignore = ignoreFields?.Count > 0 ? ignoreFields : new List<string>
             {
                 "System.Rev",
                 "System.AreaId",

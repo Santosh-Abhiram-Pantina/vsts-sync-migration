@@ -19,6 +19,7 @@ namespace VstsSyncMigrator.Engine
         List<Action<WorkItem, WorkItem>> processorActions = new List<Action<WorkItem, WorkItem>>();
         Dictionary<string, List<IFieldMap>> fieldMapps = new Dictionary<string, List<IFieldMap>>();
         Dictionary<string, IWitdMapper> workItemTypeDefinitions = new Dictionary<string, IWitdMapper>();
+        List<string> ignoreFields = new List<string>();
         ITeamProjectContext source;
         ITeamProjectContext target;
         string reflectedWorkItemIdFieldName = "TfsMigrationTool.ReflectedWorkItemId";
@@ -36,6 +37,7 @@ namespace VstsSyncMigrator.Engine
         private void ProcessConfiguration(EngineConfiguration config)
         {
             Telemetry.EnableTrace = config.TelemetryEnableTrace;
+            this.ignoreFields = config.IgnoreFields;
             if (config.Source != null)
             {
                 this.SetSource(new TeamProjectContext(config.Source.Collection, config.Source.Name));
@@ -43,7 +45,7 @@ namespace VstsSyncMigrator.Engine
             if (config.Target != null)
             {
                 this.SetTarget(new TeamProjectContext(config.Target.Collection, config.Target.Name));
-            }           
+            }
             this.SetReflectedWorkItemIdFieldName(config.ReflectedWorkItemIDFieldName);
             this.SetSourceReflectedWorkItemIdFieldName(config.SourceReflectedWorkItemIDFieldName);
             if (config.FieldMaps != null)
@@ -112,6 +114,10 @@ namespace VstsSyncMigrator.Engine
             get { return sourceReflectedWorkItemIdFieldName; }
         }
 
+        public List<string> IgnoreFields
+        {
+            get { return ignoreFields; }
+        }
 
         public ProcessingStatus Run()
         {
