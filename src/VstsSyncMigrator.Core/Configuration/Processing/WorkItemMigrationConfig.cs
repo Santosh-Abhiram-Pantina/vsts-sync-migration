@@ -11,8 +11,9 @@ namespace VstsSyncMigrator.Engine.Configuration.Processing
         public bool UpdateCreatedDate { get; set; }
         public bool UpdateCreatedBy { get; set; }
         public bool UpdateSoureReflectedId { get; set; }
+		public bool UpdateTargetIfAlreadyExists { get; set; }
 
-        public string QueryBit { get; set; }
+		public string QueryBit { get; set; }
         public bool Enabled { get; set; }
 
         public Type Processor => typeof(WorkItemMigrationContext);

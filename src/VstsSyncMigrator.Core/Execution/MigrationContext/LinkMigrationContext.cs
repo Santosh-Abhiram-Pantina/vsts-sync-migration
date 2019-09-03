@@ -35,7 +35,7 @@ namespace VstsSyncMigrator.Engine
 
         internal override void InternalExecute()
         {
-            WorkItemStoreContext sourceStore = new WorkItemStoreContext(me.Source, WorkItemStoreFlags.BypassRules);
+			WorkItemStoreContext sourceStore = new WorkItemStoreContext(me.Source, WorkItemStoreFlags.BypassRules);
             TfsQueryContext tfsqc = new TfsQueryContext(sourceStore);
             tfsqc.AddParameter("TeamProject", me.Source.Name);
             tfsqc.Query = string.Format(@"SELECT [System.Id] FROM WorkItems WHERE  [System.TeamProject] = @TeamProject {0} ORDER BY [System.Id]  ", config.QueryBit); // AND  [Microsoft.VSTS.Common.ClosedDate] = ''
@@ -92,6 +92,7 @@ namespace VstsSyncMigrator.Engine
                             }
                             else if (IsExternalLink(item))
                             {
+	                            continue;
                                 ExternalLink rl = (ExternalLink)item;
                                 CreateExternalLink((ExternalLink)item, wiTargetL);
                             } else {
@@ -294,8 +295,9 @@ namespace VstsSyncMigrator.Engine
                     if (wiTargetR.Project.Store.TeamProjectCollection.Uri.ToString().Replace("/", "") != wiSourceR.Project.Store.TeamProjectCollection.Uri.ToString().Replace("/", ""))
                     {
                         wiTargetR = null; // Totally bogus break! as not same team collection
-                    }
-                }
+					}
+					wiTargetR = null;
+				}
             }
             return wiTargetR;
         }

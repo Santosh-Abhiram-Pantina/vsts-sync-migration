@@ -12,7 +12,8 @@ namespace VstsSyncMigrator.Engine.Configuration.FieldMap
         public string WorkItemTypeName { get; set; }
         public string sourceField { get; set; }
         public string targetField { get; set; }
-        public Dictionary<string, string> valueMapping { get; set; }
+	    public string defaultValue { get; set; }
+		public Dictionary<string, string> valueMapping { get; set; }
 
 
         public Type FieldMap

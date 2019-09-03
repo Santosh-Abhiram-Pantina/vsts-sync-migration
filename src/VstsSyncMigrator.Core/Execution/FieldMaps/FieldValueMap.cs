@@ -27,13 +27,27 @@ namespace VstsSyncMigrator.Engine.ComponentContext
                         ? source.Fields[config.sourceField].Value.ToString()
                         : null;
 
-                    if (sourceValue != null && config.valueMapping.ContainsKey(sourceValue))
+                    if (sourceValue != null && config.valueMapping != null && config.valueMapping.ContainsKey(sourceValue))
                     {
                         target.Fields[config.targetField].Value = config.valueMapping[sourceValue];
                         Trace.WriteLine(string.Format("  [UPDATE] field value mapped {0}:{1} to {2}:{3}", source.Id, config.sourceField, target.Id, config.targetField));
                     }
+	                if (sourceValue != null && config.valueMapping == null)
+	                {
+		                target.Fields[config.targetField].Value = sourceValue;
+		                Trace.WriteLine(string.Format("  [UPDATE] field value mapped {0}:{1} to {2}:{3}", source.Id, config.sourceField, target.Id, config.targetField));
+	                }
+	                if (sourceValue == null && !string.IsNullOrWhiteSpace(config.defaultValue))
+	                {
+		                target.Fields[config.targetField].Value = config.defaultValue;
+		                Trace.WriteLine($"  [UPDATE] field set to default value {source.Id}:{config.targetField} to {target.Id}:{config.targetField}");
+	                }
+			}
+				else if(!source.Fields.Contains(config.sourceField) && !string.IsNullOrWhiteSpace(config.defaultValue))
+                {
+	                target.Fields[config.targetField].Value = config.defaultValue;
+	                Trace.WriteLine($"  [UPDATE] field set to default value {source.Id}:{config.targetField} to {target.Id}:{config.targetField}");
                 }
-
-        }
+		}
     }
 }

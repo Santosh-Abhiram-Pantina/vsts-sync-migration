@@ -30,37 +30,70 @@ namespace VstsSyncMigrator.Engine
         {
             _me = me;
             _config = config;
-            PopulateIgnoreList();
-        }
+			PopulateIgnoreList(me.IgnoreFields);
+	    }
 
-        private void PopulateIgnoreList()
-        {
-            _ignore = new List<string>();
-            //ignore.Add("System.CreatedDate");
-            //ignore.Add("System.CreatedBy");
-            _ignore.Add("System.Rev");
-            _ignore.Add("System.AreaId");
-            _ignore.Add("System.IterationId");
-            _ignore.Add("System.Id");
-            //ignore.Add("System.ChangedDate");
-            //ignore.Add("System.ChangedBy");
-            _ignore.Add("System.RevisedDate");
-            _ignore.Add("System.AttachedFileCount");
-            _ignore.Add("System.TeamProject");
-            _ignore.Add("System.NodeName");
-            _ignore.Add("System.RelatedLinkCount");
-            _ignore.Add("System.WorkItemType");
-            _ignore.Add("Microsoft.VSTS.Common.ActivatedDate");
-            _ignore.Add("Microsoft.VSTS.Common.StateChangeDate");
-            _ignore.Add("System.ExternalLinkCount");
-            _ignore.Add("System.HyperLinkCount");
-            _ignore.Add("System.Watermark");
-            _ignore.Add("System.AuthorizedDate");
-            _ignore.Add("System.BoardColumn");
-            _ignore.Add("System.BoardColumnDone");
-            _ignore.Add("System.BoardLane");
-            _ignore.Add("SLB.SWT.DateOfClientFeedback");
-        }
+	    private void PopulateIgnoreList(List<string> ignoreFields = null)
+	    {
+		    _ignore = ignoreFields?.Count > 0 ? ignoreFields : new List<string>
+		    {
+			    "System.Rev",
+			    "System.AreaId",
+			    "System.IterationId",
+			    "System.Id",
+			    "System.RevisedDate",
+			    "System.AuthorizedAs",
+			    "System.AttachedFileCount",
+			    "System.TeamProject",
+			    "System.NodeName",
+			    "System.RelatedLinkCount",
+			    "System.WorkItemType",
+			    "Microsoft.VSTS.Common.ActivatedDate",
+			    "Microsoft.VSTS.Common.ActivatedBy",
+			    "Microsoft.VSTS.Common.ResolvedDate",
+			    "Microsoft.VSTS.Common.ResolvedBy",
+			    "Microsoft.VSTS.Common.ClosedDate",
+			    "Microsoft.VSTS.Common.ClosedBy",
+			    "Microsoft.VSTS.Common.StateChangeDate",
+			    "System.ExternalLinkCount",
+			    "System.HyperLinkCount",
+			    "System.Watermark",
+			    "System.AuthorizedDate",
+			    "System.BoardColumn",
+			    "System.BoardColumnDone",
+			    "System.BoardLane",
+			    "SLB.SWT.DateOfClientFeedback"
+		    };
+	    }
+
+		//private void PopulateIgnoreList()
+  //      {
+  //          _ignore = new List<string>();
+  //          //ignore.Add("System.CreatedDate");
+  //          //ignore.Add("System.CreatedBy");
+  //          _ignore.Add("System.Rev");
+  //          _ignore.Add("System.AreaId");
+  //          _ignore.Add("System.IterationId");
+  //          _ignore.Add("System.Id");
+  //          //ignore.Add("System.ChangedDate");
+  //          //ignore.Add("System.ChangedBy");
+  //          _ignore.Add("System.RevisedDate");
+  //          _ignore.Add("System.AttachedFileCount");
+  //          _ignore.Add("System.TeamProject");
+  //          _ignore.Add("System.NodeName");
+  //          _ignore.Add("System.RelatedLinkCount");
+  //          _ignore.Add("System.WorkItemType");
+  //          _ignore.Add("Microsoft.VSTS.Common.ActivatedDate");
+  //          _ignore.Add("Microsoft.VSTS.Common.StateChangeDate");
+  //          _ignore.Add("System.ExternalLinkCount");
+  //          _ignore.Add("System.HyperLinkCount");
+  //          _ignore.Add("System.Watermark");
+  //          _ignore.Add("System.AuthorizedDate");
+  //          _ignore.Add("System.BoardColumn");
+  //          _ignore.Add("System.BoardColumnDone");
+  //          _ignore.Add("System.BoardLane");
+  //          _ignore.Add("SLB.SWT.DateOfClientFeedback");
+  //      }
 
         internal override void InternalExecute()
         {
@@ -88,10 +121,10 @@ namespace VstsSyncMigrator.Engine
             {
                 Stopwatch witstopwatch = new Stopwatch();
                 witstopwatch.Start();
-                WorkItem targetFound;
-                targetFound = targetStore.FindReflectedWorkItem(sourceWI, me.ReflectedWorkItemIdFieldName, false);
+                WorkItem targetWit;
+                targetWit = targetStore.FindReflectedWorkItem(sourceWI, me.ReflectedWorkItemIdFieldName, false);
                 Trace.WriteLine(string.Format("{0} - Migrating: {1}-{2}", current, sourceWI.Id, sourceWI.Type.Name), this.Name);
-                if (targetFound == null)
+                if (targetWit == null)
                 {
                     WorkItem newwit = null;
                     // Deside on WIT
@@ -103,7 +136,28 @@ namespace VstsSyncMigrator.Engine
                             newwit.Fields[me.ReflectedWorkItemIdFieldName].Value = sourceStore.CreateReflectedWorkItemId(sourceWI);
                         }
                         me.ApplyFieldMappings(sourceWI, newwit);
-                        ArrayList fails = newwit.Validate();
+	                    if (newwit.Fields["System.History"].Value != null)
+	                    {
+		                    var history = $"{newwit.Fields["System.History"].Value}";
+		                    var witLink = "href=\"x-mvwit:workitem";
+		                    var extLink = "href=\"https://dev.azure.com/oemwork";
+
+		                    if (history.Contains(witLink) || history.Contains(extLink))
+		                    {
+			                    history = history.Replace(witLink, string.Empty);
+			                    history = history.Replace(extLink, string.Empty);
+			                    newwit.Fields["System.History"].Value = history;
+		                    }
+	                    }
+	                    if (newwit.Fields["System.ChangedBy"].Value.ToString().Contains("Ayuba Audu"))
+	                    {
+		                    newwit.Fields["System.ChangedBy"].Value = "wpicustm";
+	                    }
+	                    if (newwit.Fields["System.CreatedBy"].Value.ToString().Contains("Ayuba Audu"))
+	                    {
+		                    newwit.Fields["System.CreatedBy"].Value = "wpicustm";
+	                    }
+						ArrayList fails = newwit.Validate();
                         foreach (Field f in fails)
                         {
                             Trace.WriteLine(string.Format("{0} - Invalid: {1}-{2}-{3}", current, sourceWI.Id, sourceWI.Type.Name, f.ReferenceName), this.Name);
@@ -125,11 +179,11 @@ namespace VstsSyncMigrator.Engine
                             newwit.Save();
                             newwit.Close();
                             Trace.WriteLine(string.Format("...Saved as {0}", newwit.Id), this.Name);
-                            if (sourceWI.Fields.Contains(me.SourceReflectedWorkItemIdFieldName) && _config.UpdateSoureReflectedId)
+                            if (!string.IsNullOrWhiteSpace(me.SourceReflectedWorkItemIdFieldName) && sourceWI.Fields.Contains(me.SourceReflectedWorkItemIdFieldName) && _config.UpdateSoureReflectedId)
                             {
                                 sourceWI.Fields[me.SourceReflectedWorkItemIdFieldName].Value = targetStore.CreateReflectedWorkItemId(newwit);
-                            }
-                            sourceWI.Save();
+								sourceWI.Save();
+							}
                             Trace.WriteLine(string.Format("...and Source Updated {0}", sourceWI.Id), this.Name);
                             imported++;
                         }
@@ -145,12 +199,67 @@ namespace VstsSyncMigrator.Engine
                         }
                     }
                 }
+				else if (_config.UpdateTargetIfAlreadyExists)
+                {
+	                Trace.WriteLine("Exists. Trying to update with latest snapshot", this.Name);
+	                // Deside on WIT
+	                if (me.WorkItemTypeDefinitions.ContainsKey(sourceWI.Type.Name))
+	                {
+		                targetWit = CreateAndPopulateWorkItem(_config, sourceWI, destProject, me.WorkItemTypeDefinitions[sourceWI.Type.Name].Map(sourceWI), targetWit);
+		                me.ApplyFieldMappings(sourceWI, targetWit);
+		                if (targetWit.Fields["System.History"].Value != null)
+		                {
+			                var history = $"{targetWit.Fields["System.History"].Value}";
+			                var witLink = "href=\"x-mvwit:workitem";
+			                var extLink = "href=\"https://dev.azure.com/oemwork";
+
+			                if (history.Contains(witLink) || history.Contains(extLink))
+			                {
+				                history = history.Replace(witLink, string.Empty);
+				                history = history.Replace(extLink, string.Empty);
+				                targetWit.Fields["System.History"].Value = history;
+			                }
+		                }
+
+		                if (targetWit.Fields["System.ChangedBy"].Value.ToString().Contains("Ayuba Audu"))
+		                {
+			                targetWit.Fields["System.ChangedBy"].Value = "wpicustm";
+		                }
+		                if (targetWit.Fields["System.CreatedBy"].Value.ToString().Contains("Ayuba Audu"))
+		                {
+			                targetWit.Fields["System.CreatedBy"].Value = "wpicustm";
+		                }
+						ArrayList fails = targetWit.Validate();
+		                foreach (Field f in fails)
+		                {
+			                Trace.WriteLine(string.Format("{0} - Invalid: {1}-{2}-{3}", current, sourceWI.Id, sourceWI.Type.Name, f.ReferenceName), this.Name);
+		                }
+
+		                try
+		                {
+			                targetWit.Save();
+			                targetWit.Close();
+			                Trace.WriteLine(
+				                $" ...Updated {targetWit.Id}.",
+				                Name);
+						}
+		                catch (Exception e)
+		                {
+			                Trace.TraceError(e.Message);
+		                }
+					}
+	                else
+	                {
+		                Trace.WriteLine("...not supported", this.Name);
+		                skipped++;
+	                }
+				}
                 else
                 {
-                    Trace.WriteLine("...Exists", this.Name);
+                    //Trace.WriteLine("...Exists", this.Name);
                     skipped++;
                     //  sourceWI.Open();
-                    //  sourceWI.SyncToLatest();
+                    //sourceWI.SyncToLatest();
                     //  sourceWI.Fields["TfsMigrationTool.ReflectedWorkItemId"].Value = destWIFound[0].Id;
                     //sourceWI.Save();
                 }
@@ -175,7 +284,7 @@ namespace VstsSyncMigrator.Engine
             return sourceWI.Title.ToLower().StartsWith("epic") || sourceWI.Title.ToLower().StartsWith("theme");
         }
 
-        private WorkItem CreateAndPopulateWorkItem(WorkItemMigrationConfig config, WorkItem oldWi, Project destProject, String destType)
+        private WorkItem CreateAndPopulateWorkItem(WorkItemMigrationConfig config, WorkItem oldWi, Project destProject, String destType, WorkItem newwit = null)
         {
             Stopwatch fieldMappingTimer = new Stopwatch();
 
@@ -183,7 +292,19 @@ namespace VstsSyncMigrator.Engine
 
             var NewWorkItemstartTime = DateTime.UtcNow;
             Stopwatch NewWorkItemTimer = new Stopwatch();
-            WorkItem newwit = destProject.WorkItemTypes[destType].NewWorkItem();
+	        var isNewWorkItem = true;
+	        if (newwit == null)
+	        {
+		        newwit = destProject.WorkItemTypes[destType].NewWorkItem();
+		        newwit.Fields["System.ChangedDate"].Value = oldWi.Fields["System.ChangedDate"].Value;
+			}
+	        else
+	        {
+				newwit.Open();
+		        isNewWorkItem = false;
+				newwit.Fields["System.ChangedDate"].Value = DateTime.Now;
+				newwit.Fields["Microsoft.VSTS.Common.StateChangeDate"].Value = DateTime.Now;
+			}
             NewWorkItemTimer.Stop();
             Telemetry.Current.TrackDependency("TeamService", "NewWorkItem", NewWorkItemstartTime, NewWorkItemTimer.Elapsed, true);
             Trace.WriteLine(string.Format("Dependancy: {0} - {1} - {2} - {3} - {4}", "TeamService", "NewWorkItem", NewWorkItemstartTime, NewWorkItemTimer.Elapsed, true), "WorkItemMigrationContext");
@@ -199,7 +320,7 @@ namespace VstsSyncMigrator.Engine
                 }
             }
 
-            if (config.PrefixProjectToNodes)
+			if (config.PrefixProjectToNodes)
             {
                 newwit.AreaPath = string.Format(@"{0}\{1}", newwit.Project.Name, oldWi.AreaPath);
                 newwit.IterationPath = string.Format(@"{0}\{1}", newwit.Project.Name, oldWi.IterationPath);
@@ -210,9 +331,6 @@ namespace VstsSyncMigrator.Engine
                 newwit.AreaPath = regex.Replace(oldWi.AreaPath, newwit.Project.Name, 1);
                 newwit.IterationPath = regex.Replace(oldWi.IterationPath, newwit.Project.Name, 1);
             }
-
-            newwit.Fields["System.ChangedDate"].Value = oldWi.Fields["System.ChangedDate"].Value;
-
 
             switch (destType)
             {
@@ -239,9 +357,14 @@ namespace VstsSyncMigrator.Engine
             newwit.Description = description.ToString();
 
             StringBuilder history = new StringBuilder();
-            BuildCommentTable(oldWi, history);
-            BuildFieldTable(oldWi, history);
-            history.Append("<p>Migrated by <a href='https://github.com/nkdAgility/VstsMigrator'>VSTS/TFS Sync Migration Tool</a> open source.</p>");
+
+			BuildCommentTable(oldWi, history);
+			if (isNewWorkItem)
+	        {
+		        BuildFieldTable(oldWi, history);
+			}
+	        
+            //history.Append("<p>Migrated by <a href='https://github.com/nkdAgility/VstsMigrator'>VSTS/TFS Sync Migration Tool</a> open source.</p>");
             newwit.History = history.ToString();
 
             fieldMappingTimer.Stop();
@@ -277,18 +400,24 @@ namespace VstsSyncMigrator.Engine
 
         private static void BuildCommentTable(WorkItem oldWi, StringBuilder history)
         {
+	        var hasAny = false;
             history.Append("<p>Comments from previous work item:</p>");
             history.Append("<table border='1' style='width:100%;border-color:#C0C0C0;'>");
             foreach (Revision r in oldWi.Revisions)
             {
                 if ((string)r.Fields["System.History"].Value != "" && (string)r.Fields["System.ChangedBy"].Value != "Martin Hinshelwood (Adm)")
                 {
-                    r.WorkItem.Open();
+	                hasAny = true;
+					r.WorkItem.Open();
                     history.AppendFormat("<tr><td style='align:right;width:100%'><p><b>{0} on {1}:</b></p><p>{2}</p></td></tr>", r.Fields["System.ChangedBy"].Value, DateTime.Parse(r.Fields["System.ChangedDate"].Value.ToString()).ToLongDateString(), r.Fields["System.History"].Value);
                 }
             }
             history.Append("</table>");
             history.Append("<p>&nbsp;</p>");
+	        if (!hasAny)
+	        {
+		        history.Clear();
+	        }
         }
 
         static bool isNumeric(string val, NumberStyles NumberStyle)

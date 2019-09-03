@@ -42,7 +42,17 @@ namespace VstsSyncMigrator.Engine
 
         private void ProcessCommonStructure(string treeType, NodeInfo[] sourceNodes, ICommonStructureService targetCss, ICommonStructureService sourceCss)
         {
-            NodeInfo sourceNode = (from n in sourceNodes where n.Path.Contains(treeType) select n).Single();
+            NodeInfo sourceNode = null;
+            sourceNode = (from n in sourceNodes where n.Path.Contains(treeType) select n)?.SingleOrDefault();
+            if (sourceNode == null && treeType == "Iteration")
+            {
+                sourceNode = (from n in sourceNodes where n.Name.Equals("Milestone", StringComparison.OrdinalIgnoreCase) select n)?.SingleOrDefault();
+            }
+            if (sourceNode == null)
+            {
+                throw new Exception($"No elements found in the sequence for the tree type {treeType}. Please check the process template and project details.");
+            }
+
             XmlElement sourceTree = sourceCss.GetNodesXml(new string[] { sourceNode.Uri }, true);
             NodeInfo structureParent = targetCss.GetNodeFromPath(string.Format("\\{0}\\{1}", me.Target.Name, treeType));
             if (config.PrefixProjectToNodes)

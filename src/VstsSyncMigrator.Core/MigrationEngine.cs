@@ -20,7 +20,7 @@ namespace VstsSyncMigrator.Engine
         Dictionary<string, List<IFieldMap>> fieldMapps = new Dictionary<string, List<IFieldMap>>();
         Dictionary<string, IWitdMapper> workItemTypeDefinitions = new Dictionary<string, IWitdMapper>();
         List<string> ignoreFields = new List<string>();
-        ITeamProjectContext source;
+		ITeamProjectContext source;
         ITeamProjectContext target;
         string reflectedWorkItemIdFieldName = "TfsMigrationTool.ReflectedWorkItemId";
         private string sourceReflectedWorkItemIdFieldName = "ProcessName.ReflectedWorkItemId";

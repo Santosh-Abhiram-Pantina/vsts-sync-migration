@@ -175,6 +175,20 @@ namespace VstsSyncMigrator.Engine
                         newwit.Fields["System.History"].Value =
                             currentRevisionWorkItem.Revisions[revision.Index].Fields["System.History"].Value;
 
+	                    if (newwit.Fields["System.History"].Value != null)
+	                    {
+							var history = $"{newwit.Fields["System.History"].Value}";
+		                    var witLink = "href=\"x-mvwit:workitem";
+		                    var extLink = "href=\"https://dev.azure.com/";
+
+							if (history.Contains(witLink) || history.Contains(extLink))
+		                    {
+			                    history = history.Replace(witLink, string.Empty);
+			                    history = history.Replace(extLink, string.Empty);
+								newwit.Fields["System.History"].Value = history;
+		                    }
+	                    }
+
                         var fails = newwit.Validate();
 
                         foreach (Field f in fails)
@@ -204,10 +218,10 @@ namespace VstsSyncMigrator.Engine
                             sourceStore.CreateReflectedWorkItemId(sourceWorkItem);
                     }
 
-                    var history = new StringBuilder();
-                    history.Append(
-                        "Migrated by <a href='https://github.com/nkdAgility/VstsMigrator'>VSTS/TFS Sync Migration Tool</a> open source.'>VSTS/TFS Migrator</a>.");
-                    newwit.History = history.ToString();
+                    //var history = new StringBuilder();
+                    //history.Append(
+                    //    "Migrated by <a href='https://github.com/nkdAgility/VstsMigrator'>VSTS/TFS Sync Migration Tool</a> open source.'>VSTS/TFS Migrator</a>.");
+                    //newwit.History = history.ToString();
 
                     newwit.Save();
                     newwit.Close();
